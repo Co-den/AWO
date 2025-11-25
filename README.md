@@ -1,74 +1,146 @@
-# Adaptive Workflow Orchestrator(AWO) Demonstration Instructions
+# Adaptive Workflow Orchestrator (AWO)
 
-## Prerequisites
-- Node.js (v18+ recommended)
-- npm (comes with Node)
-- Git (optional, if cloning)
+## Feature Description
+**Adaptive Workflow Orchestrator (AWO)** detects patterns in meeting notes and automatically generates workflow suggestions.  
+- **Problem it solves:** Teams often leave meetings with decisions and action items but fail to follow through consistently. Manual tracking is error‑prone and time‑consuming.  
+- **Solution:** AWO listens to meeting events, identifies when decisions and tasks are mentioned, and proposes structured workflows (e.g., “Post‑meeting follow‑up workflow”). It provides previews, simulated execution, and collects feedback to improve future suggestions.  
 
-## Backend Setup
-1. Navigate to the backend folder:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the backend server:
-   ```bash
-   npm run start
-   ```
-   The server will listen on **http://localhost:4000**.
+---
 
-### Backend Demo (curl)
-You can test the backend directly:
-```bash
-# Add two meeting events
-curl -X POST http://localhost:4000/api/v1/events \
-  -H "Content-Type: application/json" \
-  -d '{"type":"meeting","text":"Decision: adopt new tool. Action: assign tasks."}'
+## Concrete Use Case
+Sofia, a project manager using **Pulse**, records her meeting notes:  
+- *“Decision: adopt the new project management tool. Action: assign tasks to the team.”*  
+- *“We decided to move forward with the marketing campaign. Follow up: create tasks and assign owners.”*  
 
-curl -X POST http://localhost:4000/api/v1/events \
-  -H "Content-Type: application/json" \
-  -d '{"type":"meeting","text":"We decided to move forward. Follow up: create tasks and assign owners."}'
+Pulse detects these patterns and automatically suggests:  
+> **Suggestion:** *“Post‑meeting follow‑up workflow”*  
+> Confidence: 0.9  
+> Steps: Create tasks, assign owners, schedule follow‑up.  
 
-# List suggestions
-curl http://localhost:4000/api/v1/suggestions
+Sofia clicks **Preview** to see the workflow, then **Run** to simulate execution. An audit log is created, and she gives feedback (👍 or 👎) to refine future suggestions.  
+
+---
+
+## Technical MVP (TypeScript)
+
+### Backend (minimal API with Express + SQLite)
+```ts
+// src/index.ts
+import express from "express";
+import bodyParser from "body-parser";
+import { insertEvent, getAllSuggestions, getSuggestionById, insertFeedback, insertAudit } from "./store/sqliteStore";
+import { detectSuggestions } from "./services/detector";
+
+const app = express();
+app.use(bodyParser.json());
+
+// Add event
+app.post("/api/v1/events", (req, res) => {
+  const event = { id: Date.now().toString(), ...req.body, timestamp: Date.now() };
+  insertEvent(event);
+  const suggestions = detectSuggestions();
+  suggestions.forEach(s => insertAudit(s.id, true, { preview: s }));
+  res.json({ status: "ok", newSuggestions: suggestions });
+});
+
+// List suggestions
+app.get("/api/v1/suggestions", (req, res) => {
+  res.json(getAllSuggestions());
+});
+
+// Preview suggestion
+app.get("/api/v1/suggestions/:id/preview", (req, res) => {
+  const suggestion = getSuggestionById(req.params.id);
+  if (!suggestion) return res.status(404).send("Not found");
+  res.json(suggestion);
+});
+
+// Run suggestion (simulated)
+app.post("/api/v1/suggestions/:id/run", (req, res) => {
+  const suggestion = getSuggestionById(req.params.id);
+  if (!suggestion) return res.status(404).send("Not found");
+  insertAudit(suggestion.id, req.body.consent, { executed: true });
+  res.json({ status: "executed", suggestion });
+});
+
+// Feedback
+app.post("/api/v1/feedback", (req, res) => {
+  insertFeedback({ id: Date.now().toString(), ...req.body, timestamp: Date.now() });
+  res.json({ status: "feedback recorded" });
+});
+
+app.listen(4000, () => console.log("AWO backend listening on :4000"));
 ```
 
 ---
 
-## Frontend Setup
-1. Navigate to the frontend folder:
+### Frontend (React + Vite stub UI)
+```tsx
+// src/App.tsx
+import React, { useState } from "react";
+import { postEvent, getSuggestions, previewSuggestion, runSuggestion, sendFeedback } from "./api";
+
+export default function App() {
+  const [text, setText] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [preview, setPreview] = useState<any | null>(null);
+  const [report, setReport] = useState<any | null>(null);
+
+  async function addEvent() {
+    await postEvent(text);
+    setText("");
+    const res = await getSuggestions();
+    setSuggestions(res.data);
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Adaptive Workflow Orchestrator Demo</h1>
+      <input value={text} onChange={e => setText(e.target.value)} placeholder="Enter meeting text..." />
+      <button onClick={addEvent}>Add Event</button>
+      <h2>Suggestions</h2>
+      <ul>
+        {suggestions.map(s => (
+          <li key={s.id}>
+            <strong>{s.title}</strong> (confidence {s.confidence})
+            <button onClick={() => previewSuggestion(s.id).then(r => setPreview(r.data))}>Preview</button>
+            <button onClick={() => runSuggestion(s.id, true).then(r => setReport(r.data))}>Run</button>
+            <button onClick={() => sendFeedback(s.id, true)}>👍</button>
+            <button onClick={() => sendFeedback(s.id, false)}>👎</button>
+          </li>
+        ))}
+      </ul>
+      {preview && <pre>{JSON.stringify(preview, null, 2)}</pre>}
+      {report && <pre>{JSON.stringify(report, null, 2)}</pre>}
+    </div>
+  );
+}
+```
+
+---
+
+## How to Run it
+1. **Backend**
+   ```bash
+   cd backend
+   npm install
+   npm run start
+   ```
+   Runs on `http://localhost:4000`.
+
+2. **Frontend**
    ```bash
    cd frontend
-   ```
-2. Install dependencies:
-   ```bash
    npm install
-   ```
-3. Start the frontend dev server:
-   ```bash
    npm run dev
    ```
-   Vite will print the local URL (usually **http://localhost:5173**).
+   Opens on `http://localhost:5173`.
+
+3. **Demo Flow**
+   - Enter meeting text (e.g., *“Decision: adopt new tool. Action: assign tasks.”*) and click **Add Event**.  
+   - Add another event with a decision/action.  
+   - Suggestions appear in the list.  
+   - Preview, Run, and give feedback.  
+   - Audit logs available at `http://localhost:4000/api/v1/audits`.
 
 ---
-
-## Work Flow:
-1. Open the frontend URL in your browser.  
-2. Type in a meeting note e.g., *“Decision: adopt new tool. Action: assign tasks.”*) and click **Add Event**.  
-3. Add a second event with another decision/action.  
-4. Suggestions will appear in the list.  
-5. Click **Preview** to see the details, **Run** to simulate execution, and give feedback with 👍 or 👎.  
-6. You can inspect audit logs at **http://localhost:4000/api/v1/audits**.
-
----
-
-## Notes:
-- **Persistence**: All events, suggestions, feedback, and audits are stored in the `awo.db` (SQLite file in backend root).  
-- **Safety**: The Execution is well simulated; no external connectors are triggered.  
-- **Deprecation warnings**: You may see Node.js warnings from dependencies (e.g., `util._extend`). Safe to ignore for this demo though.  
-
----
-
