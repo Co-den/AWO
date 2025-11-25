@@ -15,7 +15,7 @@ yarn-error.log*
 
 # env files
 .env*
-.config.env
+config.env
 
 
 # typescript
