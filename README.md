@@ -1,4 +1,4 @@
-# Adaptive Workflow Orchestrator – Demo Instructions
+# Adaptive Workflow Orchestrator(AWO) Demonstration Instructions
 
 ## Prerequisites
 - Node.js (v18+ recommended)
