@@ -55,20 +55,20 @@ curl http://localhost:4000/api/v1/suggestions
 
 ---
 
-## Demo Flow
+## Work Flow:
 1. Open the frontend URL in your browser.  
-2. Type a meeting note (e.g., *“Decision: adopt new tool. Action: assign tasks.”*) and click **Add Event**.  
+2. Type in a meeting note e.g., *“Decision: adopt new tool. Action: assign tasks.”*) and click **Add Event**.  
 3. Add a second event with another decision/action.  
 4. Suggestions will appear in the list.  
-5. Click **Preview** to see details, **Run** to simulate execution, and give feedback with 👍 or 👎.  
+5. Click **Preview** to see the details, **Run** to simulate execution, and give feedback with 👍 or 👎.  
 6. You can inspect audit logs at **http://localhost:4000/api/v1/audits**.
 
 ---
 
-## Notes
-- **Persistence**: All events, suggestions, feedback, and audits are stored in `awo.db` (SQLite file in backend root).  
-- **Safety**: Execution is simulated; no external connectors are triggered.  
-- **Deprecation warnings**: You may see Node.js warnings from dependencies (e.g., `util._extend`). Safe to ignore for demo.  
+## Notes:
+- **Persistence**: All events, suggestions, feedback, and audits are stored in the `awo.db` (SQLite file in backend root).  
+- **Safety**: The Execution is well simulated; no external connectors are triggered.  
+- **Deprecation warnings**: You may see Node.js warnings from dependencies (e.g., `util._extend`). Safe to ignore for this demo though.  
 
 ---
 
