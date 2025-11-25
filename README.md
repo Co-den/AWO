@@ -1,5 +1,3 @@
----
-
 # Adaptive Workflow Orchestrator – Demo Instructions
 
 ## Prerequisites
@@ -74,6 +72,3 @@ curl http://localhost:4000/api/v1/suggestions
 
 ---
 
-This README ensures reviewers can run both parts quickly and reproduce the Sofia use case end‑to‑end.  
-
-👉 I can also add a **screenshot mock description** of the frontend UI so your README looks even more polished. Would you like me to draft that?
